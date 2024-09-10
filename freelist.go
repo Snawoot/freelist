@@ -10,7 +10,7 @@ func defaultNextCap(currentCap int) int {
 }
 
 type elt[T any] struct {
-	value    T       // must be the first field to avoid offset calculations
+	value    T // must be the first field to avoid offset calculations
 	nextFree *elt[T]
 }
 
