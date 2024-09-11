@@ -71,9 +71,9 @@ func (l *List) Len() int { return l.len }
 // Cap returns the number of preallocated elements in the freelist.
 func (l *List) Cap() int { return l.fl.Cap() }
 
-// Grow grows the freelist's capacity to guarantee space for another n bytes.
-// After Grow(n), at least n bytes can be written to the
-// buffer without another allocation.
+// Grow grows the freelist's capacity to guarantee space for another n elements.
+// After Grow(n), at least n elements can be added to the
+// list without another allocation.
 // If n is negative, Grow will panic.
 func (l *List) Grow(n int) {
 	l.lazyInit()
@@ -615,7 +615,7 @@ func BenchmarkContainerList(b *testing.B) {
 }
 
 func warmup(l *List, N int) {
-	l.Grow(max(0, N - l.Cap()))
+	l.Grow(max(0, N-l.Cap()))
 }
 
 func BenchmarkFreelistList(b *testing.B) {
@@ -663,14 +663,4 @@ func BenchmarkFreelistList(b *testing.B) {
 			l.Remove(l.Front())
 		}
 	})
-}
-
-var A []int
-
-func BenchmarkSliceAppend(b *testing.B) {
-	A = nil
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		A = append(A, i)
-	}
 }
