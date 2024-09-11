@@ -37,29 +37,40 @@ func (fl *Freelist[T]) Free(x *T) {
 	fl.len--
 }
 
-func (fl *Freelist[T]) grow() {
-	nextCapFn := defaultNextCap
+func (fl *Freelist[T]) nextCap() int {
 	if fl.NextCapFn != nil {
-		nextCapFn = fl.NextCapFn
+		return fl.NextCapFn(fl.cap)
 	}
+	return defaultNextCap(fl.cap)
+}
 
-	nextCap := nextCapFn(fl.cap)
-	if nextCap <= fl.cap {
-		panic("NextCapFn returned capacity not larger than current one")
+func (fl *Freelist[T]) Grow(n int) {
+	if n < 0 {
+		panic("freelist.Freelist.Grow: negative count")
 	}
-	newChunk := make([]elt[T], nextCap-fl.cap)
+	if n == 0 {
+		return
+	}
+	newChunk := make([]elt[T], n)
 	fl.mem = append(fl.mem, newChunk)
-	fl.cap = nextCap
-	fl.len += len(newChunk)
+	fl.cap += n
+	fl.len += n
 	for i := range newChunk {
 		fl.Free(&newChunk[i].value)
 	}
+}
 
+func (fl *Freelist[T]) autogrow() {
+	growSize := fl.nextCap() - fl.cap
+	if growSize <= 0 {
+		panic("freelist.Freelist.autogrow: insufficient new capacity")
+	}
+	fl.Grow(growSize)
 }
 
 func (fl *Freelist[T]) Alloc() *T {
 	if fl.free == nil {
-		fl.grow()
+		fl.autogrow()
 	}
 	found := (*elt[T])(unsafe.Pointer(fl.free))
 
