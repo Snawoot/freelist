@@ -12,7 +12,7 @@ func gc() {
 }
 
 func TestSmoke(t *testing.T) {
-	m := New[int]()
+	var m Freelist[int]
 	var allocated []*int
 	for i := 0; i < 1000; i++ {
 		ptr := m.Alloc()
