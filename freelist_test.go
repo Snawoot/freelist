@@ -39,4 +39,12 @@ func TestSmoke(t *testing.T) {
 	if m.Cap() != 1024 {
 		t.Fatalf("capacity assertion failed: got %d, expected 1024", m.Cap())
 	}
+
+	m.Clear()
+	if m.Len() != 0 {
+		t.Fatalf("length assertion failed: got %d, expected 0", m.Len())
+	}
+	if m.Cap() != 0 {
+		t.Fatalf("capacity assertion failed: got %d, expected 0", m.Cap())
+	}
 }

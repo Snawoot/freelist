@@ -44,6 +44,9 @@ func (fl *Freelist[T]) grow() {
 	}
 
 	nextCap := nextCapFn(fl.cap)
+	if nextCap <= fl.cap {
+		panic("NextCapFn returned capacity not larger than current one")
+	}
 	newChunk := make([]elt[T], nextCap-fl.cap)
 	fl.mem = append(fl.mem, newChunk)
 	fl.cap = nextCap
@@ -74,4 +77,11 @@ func (fl *Freelist[T]) Len() int {
 
 func (fl *Freelist[T]) Cap() int {
 	return fl.cap
+}
+
+func (fl *Freelist[T]) Clear() {
+	fl.len = 0
+	fl.cap = 0
+	fl.mem = nil
+	fl.free = nil
 }
