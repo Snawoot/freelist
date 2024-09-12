@@ -68,11 +68,10 @@ type Freelist[T any] struct {
 func (fl *Freelist[T]) Free(x *T) {
 	found := (*elt[T])(unsafe.Pointer(x))
 
-	var zeroElt elt[T]
-	*found = zeroElt
+	var zeroT T
+	found.value = zeroT
 
-	found.nextFree = fl.free
-	fl.free = found
+	fl.freelistPush(found)
 	fl.len--
 }
 
@@ -83,6 +82,23 @@ func (fl *Freelist[T]) nextCap() int {
 		return fl.NextCapFn(fl.cap)
 	}
 	return defaultNextCap(fl.cap)
+}
+
+// freelistPop borrows element from freelist for allocation.
+func (fl *Freelist[T]) freelistPop() *elt[T] {
+	if fl.free == nil {
+		fl.autogrow()
+	}
+	found := fl.free
+	fl.free = found.nextFree
+	found.nextFree = nil
+	return found
+}
+
+// freelistPush marks element as available for reuse.
+func (fl *Freelist[T]) freelistPush(e *elt[T]) {
+	e.nextFree = fl.free
+	fl.free = e
 }
 
 // Grow grows the freelist's capacity to guarantee space for another n objects.
@@ -99,9 +115,8 @@ func (fl *Freelist[T]) Grow(n int) {
 	newChunk := make([]elt[T], n)
 	fl.mem = append(fl.mem, newChunk)
 	fl.cap += n
-	fl.len += n
 	for i := range newChunk {
-		fl.Free(&newChunk[i].value)
+		fl.freelistPush(&newChunk[i])
 	}
 }
 
@@ -124,16 +139,8 @@ func (fl *Freelist[T]) autogrow() {
 //
 // - Dropping reference to entire Freelist and all objects allocated from it.
 func (fl *Freelist[T]) Alloc() *T {
-	if fl.free == nil {
-		fl.autogrow()
-	}
-	found := fl.free
-
-	fl.free = found.nextFree
+	found := fl.freelistPop()
 	fl.len++
-
-	var zeroElt elt[T]
-	*found = zeroElt
 	return &found.value
 }
 
