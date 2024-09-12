@@ -9,7 +9,7 @@ It allows faster allocation and reuse of small objects, making some implementati
 Key features:
 
 * Unlike many other implementations, it doesn't ruin garbage collection for pointers inside allocated objects and plays nicely with garbage collector.
-* Unlike many other implementations, it doesn't not depend on CGO and doesn't encumber builds.
+* Unlike many other implementations, it doesn't depend on CGO and doesn't encumber builds.
 
 ## Usage
 
