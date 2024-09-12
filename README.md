@@ -24,16 +24,16 @@ goos: linux
 goarch: amd64
 pkg: github.com/Snawoot/freelist
 cpu: Intel(R) N100
-BenchmarkContainerList/PushFront-4                     	 9096877	        141.2 ns/op	      55 B/op	       1 allocs/op
-BenchmarkContainerList/PushPopFront-4                  	 9105859	        160.8 ns/op	      55 B/op	       1 allocs/op
-BenchmarkContainerList/PushPopFrontImmediate-4         	12810354	        87.22 ns/op	      56 B/op	       1 allocs/op
-BenchmarkFreelistList/PushFront-4                      	13434729	        85.49 ns/op	      67 B/op	       0 allocs/op
-BenchmarkFreelistList/PushPopFront-4                   	14114340	        84.38 ns/op	      65 B/op	       0 allocs/op
-BenchmarkFreelistList/PushPopFrontImmediate-4          	32279160	        32.19 ns/op	       8 B/op	       0 allocs/op
-BenchmarkFreelistList/WarmedUpPushFront-4              	41868144	        27.81 ns/op	       7 B/op	       0 allocs/op
-BenchmarkFreelistList/WarmedUpPushPopFront-4           	34706287	        34.47 ns/op	       7 B/op	       0 allocs/op
+BenchmarkContainerList/PushFront-4                     	11164729	        122.9 ns/op	      55 B/op	       1 allocs/op
+BenchmarkContainerList/PushPopFront-4                  	10755362	        123.4 ns/op	      55 B/op	       1 allocs/op
+BenchmarkContainerList/PushPopFrontImmediate-4         	14260502	        90.09 ns/op	      56 B/op	       1 allocs/op
+BenchmarkFreelistList/PushFront-4                      	16091882	        63.31 ns/op	      64 B/op	       0 allocs/op
+BenchmarkFreelistList/PushPopFront-4                   	17773947	        69.63 ns/op	      58 B/op	       0 allocs/op
+BenchmarkFreelistList/PushPopFrontImmediate-4          	37800050	        28.32 ns/op	       8 B/op	       0 allocs/op
+BenchmarkFreelistList/WarmedUpPushFront-4              	44983108	        23.58 ns/op	       7 B/op	       0 allocs/op
+BenchmarkFreelistList/WarmedUpPushPopFront-4           	38999410	        29.72 ns/op	       7 B/op	       0 allocs/op
 PASS
-ok  	github.com/Snawoot/freelist	15.069s
+ok  	github.com/Snawoot/freelist	14.004s
 ```
 
-As you can see it performs on par with original `container/list.List` in worst case and performs 3-5 times faster once freelist reaches right size.
+As you can see it performs about twice faster than original `container/list.List` in worst case and performs 3-5 times faster once freelist reaches right size.
