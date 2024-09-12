@@ -48,3 +48,12 @@ func TestSmoke(t *testing.T) {
 		t.Fatalf("capacity assertion failed: got %d, expected 0", m.Cap())
 	}
 }
+
+func TestDefaultCapacityFunc(t *testing.T) {
+	for i := 0; i < 4096; i++ {
+		nextCap := defaultNextCap(i)
+		if nextCap-i < 64 || nextCap < (i+i/4) {
+			t.Fatalf("unexpectedly small allocation (%d) for old cap %d", nextCap, i)
+		}
+	}
+}

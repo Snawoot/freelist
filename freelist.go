@@ -13,10 +13,14 @@ import "unsafe"
 
 // defaultNextCap is NextCapFn used by Freelist by default.
 func defaultNextCap(currentCap int) int {
-	if currentCap < 64 {
-		return 64
+	switch {
+	case currentCap < 64:
+		return currentCap + 64
+	case currentCap < 1024:
+		return currentCap * 2
+	default:
+		return currentCap + currentCap/4
 	}
-	return currentCap * 2
 }
 
 // elt is an element of allocation slices, used to contain actual value or
@@ -40,7 +44,8 @@ type Freelist[T any] struct {
 	// capacity, otherwise panic will occur.
 	//
 	// If NextCapFn is nil, default function is used, which doubles capacity
-	// each time and initially starts with at least 64 elements.
+	// if it is smaller than 1024 (but adds no less than 64 elements) and
+	// adds 25% of capacity if current capacity is greater or equal 1024.
 	//
 	// Note that Freelist can be also expanded explicitly by [Freelist.Grow],
 	// which means currentCap passed to NextCapFn may be not one of the
