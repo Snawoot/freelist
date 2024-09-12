@@ -40,12 +40,12 @@ type Freelist[T any] struct {
 	// If NextCapFn is not nil, it is called to query next capacity value
 	// on freelist auto-grow. The currentCap argument of that function
 	// is the number of objects freelist can hold at this moment and
-	// the returned value is Returned value must be larger than current
-	// capacity, otherwise panic will occur.
+	// the returned value is the new capacity. Returned value must be larger
+	// than the current capacity, otherwise panic will occur.
 	//
 	// If NextCapFn is nil, default function is used, which doubles capacity
 	// if it is smaller than 1024 (but adds no less than 64 elements) and
-	// adds 25% of capacity if current capacity is greater or equal 1024.
+	// adds 25% of current capacity if current capacity is greater or equal 1024.
 	//
 	// Note that Freelist can be also expanded explicitly by [Freelist.Grow],
 	// which means currentCap passed to NextCapFn may be not one of the
@@ -136,13 +136,10 @@ func (fl *Freelist[T]) autogrow() {
 }
 
 // Alloc allocates new object. Allocated pointers should be eventually disposed
-// with either
-//
-// - Passing pointer to [Freelist.Free].
-//
-// - Clearing entire freelist with [Freelist.Clear].
-//
-// - Dropping reference to entire Freelist and all objects allocated from it.
+// with either:
+//   - Passing pointer to [Freelist.Free].
+//   - Clearing entire freelist with [Freelist.Clear].
+//   - Dropping reference to entire Freelist and all objects allocated from it.
 func (fl *Freelist[T]) Alloc() *T {
 	found := fl.freelistPop()
 	fl.len++
