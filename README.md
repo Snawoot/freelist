@@ -17,7 +17,7 @@ See [godoc examples](https://pkg.go.dev/github.com/Snawoot/freelist#pkg-examples
 
 ## Benchmarks
 
-Here is benchmarks of original `container/list.List` (`BenchmarkContainerList.*`) versus List augmented by this freelist package (`BenchmarkFreelistList.*`).
+Here is benchmarks of original `container/list.List` (`BenchmarkContainerList.*`) versus the same List, but augmented by this freelist package (`BenchmarkFreelistList.*`).
 
 ```
 goos: linux
