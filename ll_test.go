@@ -664,3 +664,41 @@ func BenchmarkFreelistList(b *testing.B) {
 		}
 	})
 }
+
+var Sink []*int
+
+func BenchmarkBuiltinNew(b *testing.B) {
+	Sink = make([]*int, 0, b.N)
+	b.Cleanup(func() {
+		Sink = nil
+	})
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		Sink = append(Sink, new(int))
+	}
+}
+
+func BenchmarkFreelistAlloc(b *testing.B) {
+	Sink = make([]*int, 0, b.N)
+	var m freelist.Freelist[int]
+	b.Cleanup(func() {
+		Sink = nil
+	})
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		Sink = append(Sink, m.Alloc())
+	}
+}
+
+func BenchmarkWarmedUpFreelistAlloc(b *testing.B) {
+	Sink = make([]*int, 0, b.N)
+	var m freelist.Freelist[int]
+	m.Grow(b.N)
+	b.Cleanup(func() {
+		Sink = nil
+	})
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		Sink = append(Sink, m.Alloc())
+	}
+}
