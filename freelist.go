@@ -9,7 +9,10 @@
 // freed to avoid memory leaks.
 package freelist
 
-import "unsafe"
+import (
+	"runtime"
+	"unsafe"
+)
 
 // defaultNextCap is NextCapFn used by Freelist by default.
 func defaultNextCap(currentCap int) int {
@@ -55,14 +58,14 @@ type Freelist[T any] struct {
 	// free is the head of freelist
 	free *elt[T]
 
-	// mem is slice which holds extents of memory with actual objects
-	mem [][]elt[T]
-
 	// cap is current capacity, the total size of allocated memory extents
 	cap int
 
 	// len is current length, the number of allocated objects
 	len int
+
+	// pinner holds memory in place
+	pinner *runtime.Pinner
 }
 
 // Free deallocates object previously allocated by [Freelist.Alloc].
@@ -118,7 +121,11 @@ func (fl *Freelist[T]) Grow(n int) {
 		return
 	}
 	newChunk := make([]elt[T], n)
-	fl.mem = append(fl.mem, newChunk)
+	if fl.pinner == nil {
+		fl.pinner = new(runtime.Pinner)
+		runtime.SetFinalizer(fl.pinner, pinnerFinalizer)
+	}
+	fl.pinner.Pin(&newChunk[0])
 	fl.cap += n
 	for i := range newChunk {
 		fl.freelistPush(&newChunk[i])
@@ -160,6 +167,12 @@ func (fl *Freelist[T]) Cap() int {
 func (fl *Freelist[T]) Clear() {
 	fl.len = 0
 	fl.cap = 0
-	fl.mem = nil
 	fl.free = nil
+	if fl.pinner != nil {
+		fl.pinner.Unpin()
+	}
+}
+
+func pinnerFinalizer(pinner *runtime.Pinner) {
+	pinner.Unpin()
 }
