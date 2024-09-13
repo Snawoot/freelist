@@ -7,6 +7,7 @@ package freelist_test
 
 import (
 	"container/list"
+	"runtime"
 	"testing"
 
 	"github.com/Snawoot/freelist"
@@ -589,6 +590,7 @@ func TestMoveUnknownMark(t *testing.T) {
 func BenchmarkContainerList(b *testing.B) {
 	b.Run("PushFront", func(b *testing.B) {
 		l := list.New()
+		b.Cleanup(gc)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			l.PushFront(i)
@@ -596,6 +598,7 @@ func BenchmarkContainerList(b *testing.B) {
 	})
 	b.Run("PushPopFront", func(b *testing.B) {
 		l := list.New()
+		b.Cleanup(gc)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			l.PushFront(i)
@@ -606,6 +609,7 @@ func BenchmarkContainerList(b *testing.B) {
 	})
 	b.Run("PushPopFrontImmediate", func(b *testing.B) {
 		l := list.New()
+		b.Cleanup(gc)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			l.PushFront(i)
@@ -621,6 +625,7 @@ func warmup(l *List, N int) {
 func BenchmarkFreelistList(b *testing.B) {
 	b.Run("PushFront", func(b *testing.B) {
 		l := New()
+		b.Cleanup(gc)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			l.PushFront(i)
@@ -628,6 +633,7 @@ func BenchmarkFreelistList(b *testing.B) {
 	})
 	b.Run("PushPopFront", func(b *testing.B) {
 		l := New()
+		b.Cleanup(gc)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			l.PushFront(i)
@@ -638,6 +644,7 @@ func BenchmarkFreelistList(b *testing.B) {
 	})
 	b.Run("PushPopFrontImmediate", func(b *testing.B) {
 		l := New()
+		b.Cleanup(gc)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			l.PushFront(i)
@@ -646,6 +653,7 @@ func BenchmarkFreelistList(b *testing.B) {
 	})
 	b.Run("WarmedUpPushFront", func(b *testing.B) {
 		l := New()
+		b.Cleanup(gc)
 		warmup(l, b.N)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -654,6 +662,7 @@ func BenchmarkFreelistList(b *testing.B) {
 	})
 	b.Run("WarmedUpPushPopFront", func(b *testing.B) {
 		l := New()
+		b.Cleanup(gc)
 		warmup(l, b.N)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -665,12 +674,19 @@ func BenchmarkFreelistList(b *testing.B) {
 	})
 }
 
+func gc() {
+	for i := 0; i < 3; i++ {
+		runtime.GC()
+	}
+}
+
 var Sink []*int
 
 func BenchmarkBuiltinNew(b *testing.B) {
 	Sink = make([]*int, 0, b.N)
 	b.Cleanup(func() {
 		Sink = nil
+		gc()
 	})
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -683,6 +699,7 @@ func BenchmarkFreelistAlloc(b *testing.B) {
 	var m freelist.Freelist[int]
 	b.Cleanup(func() {
 		Sink = nil
+		gc()
 	})
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -696,6 +713,7 @@ func BenchmarkWarmedUpFreelistAlloc(b *testing.B) {
 	m.Grow(b.N)
 	b.Cleanup(func() {
 		Sink = nil
+		gc()
 	})
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
