@@ -23,11 +23,15 @@ func defaultNextCap(currentCap int) int {
 	}
 }
 
+type twoDIndex struct {
+	i, j int
+}
+
 // elt is an element of allocation slices, used to contain actual value or
 // pointer to the next free element.
 type elt[T any] struct {
-	value    T       // must be the first field to avoid offset calculations
-	nextFree *elt[T] // pointer to the next available element
+	value T         // must be the first field to avoid offset calculations
+	index twoDIndex // pointer to the next available element or to this element if taken
 }
 
 // A Freelist is an instance of freelist allocator of objects of type T.
@@ -53,7 +57,7 @@ type Freelist[T any] struct {
 	NextCapFn func(currentCap int) int
 
 	// free is the head of freelist
-	free *elt[T]
+	free twoDIndex
 
 	// mem is slice which holds extents of memory with actual objects
 	mem [][]elt[T]
@@ -91,19 +95,21 @@ func (fl *Freelist[T]) nextCap() int {
 
 // freelistPop borrows element from freelist for allocation.
 func (fl *Freelist[T]) freelistPop() *elt[T] {
-	if fl.free == nil {
+	if fl.free == (twoDIndex{0, 0}) {
 		fl.autogrow()
 	}
-	found := fl.free
-	fl.free = found.nextFree
-	found.nextFree = nil
+	found := &(fl.mem[fl.free.i-1][fl.free.j-1])
+	newHead := found.index
+	found.index = fl.free
+	fl.free = newHead
 	return found
 }
 
 // freelistPush marks element as available for reuse.
 func (fl *Freelist[T]) freelistPush(e *elt[T]) {
-	e.nextFree = fl.free
-	fl.free = e
+	newHead := e.index
+	e.index = fl.free
+	fl.free = newHead
 }
 
 // Grow grows the freelist's capacity to guarantee space for another n objects.
@@ -120,8 +126,10 @@ func (fl *Freelist[T]) Grow(n int) {
 	newChunk := make([]elt[T], n)
 	fl.mem = append(fl.mem, newChunk)
 	fl.cap += n
-	for i := range newChunk {
-		fl.freelistPush(&newChunk[i])
+	i := len(fl.mem) - 1
+	for j := range newChunk {
+		newChunk[j].index = twoDIndex{i + 1, j + 1}
+		fl.freelistPush(&newChunk[j])
 	}
 }
 
@@ -161,5 +169,5 @@ func (fl *Freelist[T]) Clear() {
 	fl.len = 0
 	fl.cap = 0
 	fl.mem = nil
-	fl.free = nil
+	fl.free = twoDIndex{0, 0}
 }
