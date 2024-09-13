@@ -30,7 +30,7 @@ func defaultNextCap(currentCap int) int {
 // pointer to the next free element.
 type elt[T any] struct {
 	value    T       // must be the first field to avoid offset calculations
-	nextFree *elt[T] // pointer to the next available element
+	nextFree uintptr // pointer to the next available element
 }
 
 // A Freelist is an instance of freelist allocator of objects of type T.
@@ -56,7 +56,7 @@ type Freelist[T any] struct {
 	NextCapFn func(currentCap int) int
 
 	// free is the head of freelist
-	free *elt[T]
+	free uintptr
 
 	// cap is current capacity, the total size of allocated memory extents
 	cap int
@@ -94,19 +94,19 @@ func (fl *Freelist[T]) nextCap() int {
 
 // freelistPop borrows element from freelist for allocation.
 func (fl *Freelist[T]) freelistPop() *elt[T] {
-	if fl.free == nil {
+	if fl.free == 0 {
 		fl.autogrow()
 	}
-	found := fl.free
+	found := (*elt[T])(unsafe.Pointer(fl.free))
 	fl.free = found.nextFree
-	found.nextFree = nil
+	found.nextFree = 0
 	return found
 }
 
 // freelistPush marks element as available for reuse.
 func (fl *Freelist[T]) freelistPush(e *elt[T]) {
 	e.nextFree = fl.free
-	fl.free = e
+	fl.free = uintptr(unsafe.Pointer(e))
 }
 
 // Grow grows the freelist's capacity to guarantee space for another n objects.
@@ -167,7 +167,7 @@ func (fl *Freelist[T]) Cap() int {
 func (fl *Freelist[T]) Clear() {
 	fl.len = 0
 	fl.cap = 0
-	fl.free = nil
+	fl.free = 0
 	if fl.pinner != nil {
 		fl.pinner.Unpin()
 	}
