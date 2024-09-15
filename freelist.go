@@ -55,9 +55,6 @@ type Freelist[T any] struct {
 	// free is the head of freelist
 	free *elt[T]
 
-	// mem is slice which holds extents of memory with actual objects
-	mem [][]elt[T]
-
 	// cap is current capacity, the total size of allocated memory extents
 	cap int
 
@@ -118,7 +115,6 @@ func (fl *Freelist[T]) Grow(n int) {
 		return
 	}
 	newChunk := make([]elt[T], n)
-	fl.mem = append(fl.mem, newChunk)
 	fl.cap += n
 	for i := range newChunk {
 		fl.freelistPush(&newChunk[i])
@@ -160,6 +156,5 @@ func (fl *Freelist[T]) Cap() int {
 func (fl *Freelist[T]) Clear() {
 	fl.len = 0
 	fl.cap = 0
-	fl.mem = nil
 	fl.free = nil
 }
