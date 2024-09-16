@@ -11,15 +11,20 @@ package freelist
 
 import "unsafe"
 
+const (
+	minDefaultAllocStep = 64
+	maxDefaultAllocStep = 1024
+)
+
 // defaultNextCap is NextCapFn used by Freelist by default.
 func defaultNextCap(currentCap int) int {
 	switch {
-	case currentCap < 64:
-		return currentCap + 64
-	case currentCap < 1024:
+	case currentCap < minDefaultAllocStep:
+		return currentCap + minDefaultAllocStep
+	case currentCap <= maxDefaultAllocStep / 2:
 		return currentCap * 2
 	default:
-		return currentCap + currentCap/4
+		return currentCap + maxDefaultAllocStep
 	}
 }
 
@@ -44,8 +49,8 @@ type Freelist[T any] struct {
 	// than the current capacity, otherwise panic will occur.
 	//
 	// If NextCapFn is nil, default function is used, which doubles capacity
-	// if it is smaller than 1024 (but adds no less than 64 elements) and
-	// adds 25% of current capacity if current capacity is greater or equal 1024.
+	// if it is less than or equal 512 (but adds no less than 64 elements) or
+	// adds 1024 elements to capacity otherwise.
 	//
 	// Note that Freelist can be also expanded explicitly by [Freelist.Grow],
 	// which means currentCap passed to NextCapFn may be not one of the
