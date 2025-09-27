@@ -68,9 +68,6 @@ func New() *List { return new(List).Init() }
 // The complexity is O(1).
 func (l *List) Len() int { return l.len }
 
-// Cap returns the number of preallocated elements in the freelist.
-func (l *List) Cap() int { return l.fl.Cap() }
-
 // Grow grows the freelist's capacity to guarantee space for another n elements.
 // After Grow(n), at least n elements can be added to the
 // list without another allocation.
@@ -615,7 +612,7 @@ func BenchmarkContainerList(b *testing.B) {
 }
 
 func warmup(l *List, N int) {
-	l.Grow(max(0, N-l.Cap()))
+	l.Grow(N)
 }
 
 func BenchmarkFreelistList(b *testing.B) {

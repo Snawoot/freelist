@@ -9,24 +9,12 @@
 // freed to avoid memory leaks.
 package freelist
 
-import "unsafe"
-
-const (
-	minDefaultAllocStep = 64
-	maxDefaultAllocStep = 1024
+import (
+	"sync/atomic"
+	"unsafe"
 )
 
-// defaultNextCap is NextCapFn used by Freelist by default.
-func defaultNextCap(currentCap int) int {
-	switch {
-	case currentCap < minDefaultAllocStep:
-		return currentCap + minDefaultAllocStep
-	case currentCap <= maxDefaultAllocStep / 2:
-		return currentCap * 2
-	default:
-		return currentCap + maxDefaultAllocStep
-	}
-}
+const growSize = 1024
 
 // elt is an element of allocation slices, used to contain actual value or
 // pointer to the next free element.
@@ -40,31 +28,10 @@ type elt[T any] struct {
 //
 // A Freelist should not be copied after first use.
 //
-// Methods of Freelist are not safe for concurrent use by multiple goroutines.
+// Methods of Freelist are safe for concurrent use by multiple goroutines.
 type Freelist[T any] struct {
-	// If NextCapFn is not nil, it is called to query next capacity value
-	// on freelist auto-grow. The currentCap argument of that function
-	// is the number of objects freelist can hold at this moment and
-	// the returned value is the new capacity. Returned value must be larger
-	// than the current capacity, otherwise panic will occur.
-	//
-	// If NextCapFn is nil, default function is used, which doubles capacity
-	// if it is less than or equal 512 (but adds no less than 64 elements) or
-	// adds 1024 elements to capacity otherwise.
-	//
-	// Note that Freelist can be also expanded explicitly by [Freelist.Grow],
-	// which means currentCap passed to NextCapFn may be not one of the
-	// values returned by NextCapFn previously.
-	NextCapFn func(currentCap int) int
-
 	// free is the head of freelist
-	free *elt[T]
-
-	// cap is current capacity, the total size of allocated memory extents
-	cap int
-
-	// len is current length, the number of allocated objects
-	len int
+	free atomic.Pointer[elt[T]]
 }
 
 // Free deallocates object previously allocated by [Freelist.Alloc].
@@ -79,33 +46,32 @@ func (fl *Freelist[T]) Free(x *T) {
 	found.value = zeroT
 
 	fl.freelistPush(found)
-	fl.len--
-}
-
-// nextCap invokes NextCapFn or default next capacity function if NextCapFn is
-// not set.
-func (fl *Freelist[T]) nextCap() int {
-	if fl.NextCapFn != nil {
-		return fl.NextCapFn(fl.cap)
-	}
-	return defaultNextCap(fl.cap)
 }
 
 // freelistPop borrows element from freelist for allocation.
 func (fl *Freelist[T]) freelistPop() *elt[T] {
-	if fl.free == nil {
-		fl.autogrow()
+	for {
+		free := fl.free.Load()
+		if free == nil {
+			fl.autogrow()
+			continue
+		}
+		if fl.free.CompareAndSwap(free, free.nextFree) {
+			free.nextFree = nil
+			return free
+		}
 	}
-	found := fl.free
-	fl.free = found.nextFree
-	found.nextFree = nil
-	return found
 }
 
 // freelistPush marks element as available for reuse.
 func (fl *Freelist[T]) freelistPush(e *elt[T]) {
-	e.nextFree = fl.free
-	fl.free = e
+	for {
+		free := fl.free.Load()
+		e.nextFree = free
+		if fl.free.CompareAndSwap(free, e) {
+			return
+		}
+	}
 }
 
 // Grow grows the freelist's capacity to guarantee space for another n objects.
@@ -120,7 +86,6 @@ func (fl *Freelist[T]) Grow(n int) {
 		return
 	}
 	newChunk := make([]elt[T], n)
-	fl.cap += n
 	for i := range newChunk {
 		fl.freelistPush(&newChunk[i])
 	}
@@ -129,10 +94,6 @@ func (fl *Freelist[T]) Grow(n int) {
 // autogrow expands memory allocated from runtime to ensure space
 // for new allocations from freelist.
 func (fl *Freelist[T]) autogrow() {
-	growSize := fl.nextCap() - fl.cap
-	if growSize <= 0 {
-		panic("freelist.Freelist.autogrow: insufficient new capacity")
-	}
 	fl.Grow(growSize)
 }
 
@@ -143,23 +104,10 @@ func (fl *Freelist[T]) autogrow() {
 //   - Dropping reference to entire Freelist and all objects allocated from it.
 func (fl *Freelist[T]) Alloc() *T {
 	found := fl.freelistPop()
-	fl.len++
 	return &found.value
-}
-
-// Len returns the number of objects currently allocated from freelist.
-func (fl *Freelist[T]) Len() int {
-	return fl.len
-}
-
-// Cap returns the number of objects that freelist currently can hold.
-func (fl *Freelist[T]) Cap() int {
-	return fl.cap
 }
 
 // Clear resets freelist to initial empty state.
 func (fl *Freelist[T]) Clear() {
-	fl.len = 0
-	fl.cap = 0
-	fl.free = nil
+	fl.free.Store(nil)
 }
